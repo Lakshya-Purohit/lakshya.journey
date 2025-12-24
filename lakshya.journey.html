@@ -1,1 +1,623 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lakshya Purohit | The Journey</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #050505;
+            overflow-x: hidden;
+        }
+        
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        
+        /* Hide Scrollbar */
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        
+        /* Road Texture */
+        .road-texture {
+            background-image: linear-gradient(90deg, transparent 50%, rgba(255, 255, 255, 0.1) 50%);
+            background-size: 100px 100%;
+        }
+        
+        /* Glass Cards */
+        .glass-panel {
+            background: rgba(10, 10, 10, 0.8);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Animations */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .wheel-spin {
+            animation: spin 0.5s linear infinite;
+            animation-play-state: paused;
+        }
+        
+        @keyframes idle {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-2px); }
+        }
+        .car-body { animation: idle 2s ease-in-out infinite; }
+        
+        .neon-red { box-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
+        .neon-blue { box-shadow: 0 0 15px rgba(59, 130, 246, 0.3); }
+        
+        /* Headlight Beam Effect */
+        .headlight-beam {
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.02) 60%, transparent 100%);
+            clip-path: polygon(0 35%, 100% 0, 100% 100%, 0 65%);
+            filter: blur(20px);
+            mix-blend-mode: overlay;
+            pointer-events: none;
+            transform-origin: left center;
+        }
+        
+        /* Smooth World Movement */
+        #world-container {
+            will-change: transform;
+            transition: transform 0.1s linear;
+        }
+        
+        input, textarea {
+            outline: none;
+        }
+        input:focus, textarea:focus {
+            border-color: rgba(239, 68, 68, 0.8);
+            box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.2);
+        }
+    </style>
+</head>
+<body class="text-neutral-300 antialiased selection:bg-red-900 selection:text-white">
+
+    <!-- Scroll Track (Height determines drive duration) -->
+    <div style="height: 900vh;"></div>
+
+    <!-- Fixed Viewport -->
+    <main class="fixed inset-0 w-full h-full overflow-hidden flex flex-col justify-between bg-[#050505]">
+        
+        <!-- HUD / Nav -->
+        <nav class="absolute top-0 w-full z-50 px-6 py-6 flex justify-between items-start pointer-events-none">
+            <div>
+                <h1 class="text-white font-bold tracking-tighter text-lg">LAKSHYA<span class="text-red-600">.RACING</span></h1>
+                <p class="text-[10px] text-neutral-500 font-mono mt-1 tracking-wider">FULL STACK DEVELOPER</p>
+            </div>
+            
+            <div class="flex gap-4 pointer-events-auto">
+                <!-- RESUME DOWNLOAD BUTTON -->
+                <button onclick="downloadResume()" class="glass-panel p-2 rounded-md hover:bg-neutral-800 hover:text-white transition-colors" title="Download Resume">
+                    <i data-lucide="file-down" class="w-4 h-4 text-neutral-400 hover:text-white"></i>
+                </button>
+
+                <a href="https://github.com/lakshya" target="_blank" class="glass-panel p-2 rounded-md hover:bg-neutral-800 hover:text-white transition-colors">
+                    <i data-lucide="github" class="w-4 h-4 text-neutral-400 hover:text-white"></i>
+                </a>
+                <a href="mailto:lakshya.purohit.2105@gmail.com" class="glass-panel p-2 rounded-md hover:bg-neutral-800 hover:text-white transition-colors">
+                    <i data-lucide="mail" class="w-4 h-4 text-neutral-400 hover:text-white"></i>
+                </a>
+            </div>
+        </nav>
+
+        <!-- Speedometer -->
+        <div class="fixed bottom-28 right-10 flex flex-col items-end gap-1 pointer-events-none hidden md:flex z-50">
+            <div class="text-4xl font-bold font-mono text-white tracking-tighter" id="speed-display">000</div>
+            <div class="text-[10px] text-neutral-600 font-bold tracking-widest">KM/H</div>
+            <div class="w-32 h-1 bg-neutral-900 rounded-full mt-2 overflow-hidden border border-neutral-800">
+                <div id="progress-bar" class="h-full bg-red-600 w-0"></div>
+            </div>
+        </div>
+
+        <!-- Background Layers -->
+        <div class="absolute inset-0 z-0 pointer-events-none">
+            <!-- Stars -->
+            <div class="absolute top-0 left-0 w-[200vw] h-full opacity-20" id="stars" style="background-image: radial-gradient(rgba(255,255,255,0.8) 1px, transparent 1px); background-size: 60px 60px;"></div>
+            
+            <!-- Cityscape (Far) -->
+            <div class="absolute bottom-48 left-0 w-[600vw] h-64 opacity-10 flex items-end gap-2 px-10" id="skyline">
+                <!-- CSS Generated Buildings -->
+                <div class="w-24 h-32 bg-neutral-700"></div>
+                <div class="w-16 h-48 bg-neutral-700"></div>
+                <div class="w-32 h-24 bg-neutral-700"></div>
+                <div class="w-12 h-56 bg-neutral-700"></div>
+                <div class="w-40 h-16 bg-neutral-700"></div>
+                <div class="w-20 h-40 bg-neutral-700"></div>
+                <!-- Repeat for distance -->
+                <div class="w-24 h-32 bg-neutral-700 ml-20"></div>
+                <div class="w-16 h-48 bg-neutral-700"></div>
+                <div class="w-32 h-24 bg-neutral-700"></div>
+                <div class="w-12 h-56 bg-neutral-700"></div>
+                <div class="w-40 h-16 bg-neutral-700"></div>
+                <div class="w-20 h-40 bg-neutral-700"></div>
+                 <div class="w-24 h-32 bg-neutral-700 ml-32"></div>
+                <div class="w-16 h-48 bg-neutral-700"></div>
+                <div class="w-32 h-24 bg-neutral-700"></div>
+                <div class="w-12 h-56 bg-neutral-700"></div>
+                <div class="w-40 h-16 bg-neutral-700"></div>
+                <div class="w-20 h-40 bg-neutral-700"></div>
+            </div>
+        </div>
+
+        <!-- The World Container (Horizontal Scroll) -->
+        <div id="world-container" class="absolute top-0 left-0 h-full flex flex-row items-center pl-[20vw] z-10">
+            
+            <!-- SECTION 1: HERO -->
+            <div class="w-screen flex-shrink-0 relative px-10 md:px-20">
+                <div class="glass-panel p-10 rounded-xl max-w-3xl border-l-2 border-l-red-600">
+                    <div class="flex items-center gap-2 mb-6">
+                        <span class="inline-flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                        <span class="text-[10px] font-mono text-green-500 tracking-widest uppercase">Engine Online</span>
+                    </div>
+                    <h2 class="text-6xl md:text-8xl font-bold text-white tracking-tighter mb-8 leading-[0.9]">
+                        Architecting<br>
+                        <span class="text-neutral-600">Velocity.</span>
+                    </h2>
+                    <p class="text-base text-neutral-400 max-w-lg mb-8 leading-relaxed">
+                        I'm Lakshya Purohit. A Full Stack Developer building high-performance engines for the web using .NET Core and Angular.
+                    </p>
+                    <div class="flex items-center gap-3 text-[10px] font-mono text-neutral-500 uppercase tracking-widest">
+                        <i data-lucide="arrow-down" class="w-3 h-3 animate-bounce text-red-500"></i>
+                        Scroll to Accelerate
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 2: TECH STACK -->
+            <div class="w-screen flex-shrink-0 flex items-center justify-center relative px-10">
+                <div class="absolute -top-10 left-10 opacity-5"><i data-lucide="cpu" class="w-96 h-96"></i></div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl w-full relative z-10">
+                    <!-- Tech List -->
+                    <div class="glass-panel p-8 rounded-xl">
+                        <h3 class="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+                            <i data-lucide="gauge" class="w-4 h-4 text-red-500"></i>
+                            System Specs
+                        </h3>
+                        <div class="space-y-5">
+                            <div class="group">
+                                <div class="flex justify-between text-[10px] font-mono text-neutral-400 mb-1.5 group-hover:text-white transition-colors">
+                                    <span>ASP.NET CORE</span>
+                                    <span>98%</span>
+                                </div>
+                                <div class="h-0.5 bg-neutral-800 w-full">
+                                    <div class="h-full bg-neutral-200 w-[98%] group-hover:bg-red-500 transition-colors duration-500"></div>
+                                </div>
+                            </div>
+                            <div class="group">
+                                <div class="flex justify-between text-[10px] font-mono text-neutral-400 mb-1.5 group-hover:text-white transition-colors">
+                                    <span>ANGULAR / TYPESCRIPT</span>
+                                    <span>92%</span>
+                                </div>
+                                <div class="h-0.5 bg-neutral-800 w-full">
+                                    <div class="h-full bg-neutral-200 w-[92%] group-hover:bg-red-500 transition-colors duration-500"></div>
+                                </div>
+                            </div>
+                            <div class="group">
+                                <div class="flex justify-between text-[10px] font-mono text-neutral-400 mb-1.5 group-hover:text-white transition-colors">
+                                    <span>POSTGRESQL / SQL</span>
+                                    <span>88%</span>
+                                </div>
+                                <div class="h-0.5 bg-neutral-800 w-full">
+                                    <div class="h-full bg-neutral-200 w-[88%] group-hover:bg-red-500 transition-colors duration-500"></div>
+                                </div>
+                            </div>
+                            <div class="group">
+                                <div class="flex justify-between text-[10px] font-mono text-neutral-400 mb-1.5 group-hover:text-white transition-colors">
+                                    <span>WEBRTC / SOCKETS</span>
+                                    <span>85%</span>
+                                </div>
+                                <div class="h-0.5 bg-neutral-800 w-full">
+                                    <div class="h-full bg-neutral-200 w-[85%] group-hover:bg-red-500 transition-colors duration-500"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Performance Metrics -->
+                    <div class="glass-panel p-8 rounded-xl flex flex-col justify-between">
+                        <h3 class="text-lg font-semibold text-white mb-4">Telemetry</h3>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-black/40 p-4 rounded border border-neutral-800 hover:border-neutral-600 transition-colors">
+                                <div class="text-xl font-mono text-white mb-1">-50%</div>
+                                <div class="text-[10px] text-neutral-500 uppercase tracking-wide">Latency</div>
+                            </div>
+                            <div class="bg-black/40 p-4 rounded border border-neutral-800 hover:border-neutral-600 transition-colors">
+                                <div class="text-xl font-mono text-white mb-1">200+</div>
+                                <div class="text-[10px] text-neutral-500 uppercase tracking-wide">Commits</div>
+                            </div>
+                            <div class="bg-black/40 p-4 rounded border border-neutral-800 hover:border-neutral-600 transition-colors">
+                                <div class="text-xl font-mono text-white mb-1">30%</div>
+                                <div class="text-[10px] text-neutral-500 uppercase tracking-wide">Optimization</div>
+                            </div>
+                            <div class="bg-black/40 p-4 rounded border border-neutral-800 hover:border-neutral-600 transition-colors">
+                                <div class="text-xl font-mono text-white mb-1">10k+</div>
+                                <div class="text-[10px] text-neutral-500 uppercase tracking-wide">Requests/Day</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 3: EXPERIENCE (The Highway) -->
+            <div class="w-[180vw] flex-shrink-0 flex items-center relative px-20 gap-32">
+                <!-- Heading for Experience Section -->
+                <div class="absolute top-20 left-20">
+                    <h2 class="text-3xl font-bold text-white tracking-tighter flex items-center gap-3">
+                        <span class="w-8 h-8 flex items-center justify-center bg-blue-600 rounded">
+                            <i data-lucide="map" class="w-4 h-4 text-white"></i>
+                        </span>
+                        Career Roadmap
+                    </h2>
+                </div>
+                
+                <!-- Timeline Item 1 -->
+                <div class="relative group mt-[-2vh]">
+                    <div class="h-24 w-[1px] bg-neutral-800 mx-auto absolute bottom-full left-1/2 -translate-x-1/2 group-hover:bg-blue-500 transition-colors"></div>
+                    <div class="glass-panel w-80 p-6 rounded-lg group-hover:border-blue-500/50 transition-all duration-300">
+                        <div class="text-[10px] font-mono text-blue-400 mb-2 tracking-wide">PRESENT</div>
+                        <h3 class="text-base font-bold text-white">AKAL Info Systems</h3>
+                        <div class="text-xs text-neutral-400 mb-4">Software Developer</div>
+                        <p class="text-[11px] text-neutral-500 leading-relaxed">
+                            Engineered Video e-KYC with WebRTC. Optimized API latency by 50% via asynchronous processing.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Timeline Item 2 -->
+                <div class="relative group mt-[14vh]">
+                    <div class="h-24 w-[1px] bg-neutral-800 mx-auto absolute bottom-full left-1/2 -translate-x-1/2 group-hover:bg-purple-500 transition-colors"></div>
+                    <div class="glass-panel w-80 p-6 rounded-lg group-hover:border-purple-500/50 transition-all duration-300">
+                        <div class="text-[10px] font-mono text-purple-400 mb-2 tracking-wide">2024 - 2025</div>
+                        <h3 class="text-base font-bold text-white">LP Cloud Lab</h3>
+                        <div class="text-xs text-neutral-400 mb-4">Software Developer</div>
+                        <p class="text-[11px] text-neutral-500 leading-relaxed">
+                            Scaled solutions via Dependency Injection. Tuned SQL Indexes for 30% faster complex queries.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Timeline Item 3 -->
+                <div class="relative group mt-[-2vh]">
+                    <div class="h-24 w-[1px] bg-neutral-800 mx-auto absolute bottom-full left-1/2 -translate-x-1/2 group-hover:bg-orange-500 transition-colors"></div>
+                    <div class="glass-panel w-80 p-6 rounded-lg group-hover:border-orange-500/50 transition-all duration-300">
+                        <div class="text-[10px] font-mono text-orange-400 mb-2 tracking-wide">2023</div>
+                        <h3 class="text-base font-bold text-white">NOI Technologies</h3>
+                        <div class="text-xs text-neutral-400 mb-4">Full Stack Intern</div>
+                        <p class="text-[11px] text-neutral-500 leading-relaxed">
+                            Built ERP modules in Moqui (Java). Implemented RBAC security models for enterprise data.
+                        </p>
+                    </div>
+                </div>
+
+                 <!-- Timeline Item 4 -->
+                 <div class="relative group mt-[14vh]">
+                    <div class="h-24 w-[1px] bg-neutral-800 mx-auto absolute bottom-full left-1/2 -translate-x-1/2 group-hover:bg-green-500 transition-colors"></div>
+                    <div class="glass-panel w-80 p-6 rounded-lg group-hover:border-green-500/50 transition-all duration-300">
+                        <div class="text-[10px] font-mono text-green-400 mb-2 tracking-wide">2022</div>
+                        <h3 class="text-base font-bold text-white">DRDO</h3>
+                        <div class="text-xs text-neutral-400 mb-4">Image Proc. Intern</div>
+                        <p class="text-[11px] text-neutral-500 leading-relaxed">
+                            Computer Vision algorithms for defense. Object detection optimization with OpenCV.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 4: PROJECTS (The Showroom) -->
+            <div class="w-[150vw] flex-shrink-0 flex items-center px-10 relative">
+                
+                <div class="flex flex-col justify-center h-full mr-16 sticky left-10 z-10">
+                    <h2 class="text-4xl md:text-5xl font-bold text-white tracking-tighter flex flex-col gap-2">
+                        <span class="flex items-center gap-3">
+                            <span class="w-10 h-10 flex items-center justify-center bg-red-600 rounded shadow-[0_0_20px_rgba(220,38,38,0.4)]">
+                                <i data-lucide="trophy" class="w-5 h-5 text-white"></i>
+                            </span>
+                            The
+                        </span>
+                        <span class="text-neutral-500">Showroom</span>
+                    </h2>
+                    <p class="text-xs text-neutral-400 mt-4 font-mono border-l-2 border-red-600 pl-4 max-w-xs">
+                        High-performance deployments.<br>Production ready engines.
+                    </p>
+                </div>
+                
+                <!-- Cards Container -->
+                <div class="flex gap-10 items-center">
+                    <!-- Project Card 1 -->
+                    <a href="#" class="block w-96 flex-shrink-0 glass-panel p-0 rounded-xl overflow-hidden group hover:border-red-500/50 transition-all duration-500 transform hover:-translate-y-4">
+                        <div class="h-40 bg-gradient-to-br from-neutral-800 via-neutral-900 to-black p-6 relative group-hover:from-red-900/20 group-hover:to-black transition-colors">
+                            <div class="absolute top-4 right-4 w-10 h-10 flex items-center justify-center bg-black/40 rounded-full backdrop-blur border border-white/5">
+                                <i data-lucide="monitor-play" class="w-5 h-5 text-white group-hover:text-red-400 transition-colors"></i>
+                            </div>
+                            <div class="mt-auto h-full flex items-end">
+                                <h3 class="text-xl font-bold text-white tracking-tight">Desktop Video e-KYC</h3>
+                            </div>
+                        </div>
+                        <div class="p-6 border-t border-neutral-800 bg-black/20">
+                            <p class="text-xs text-neutral-400 leading-relaxed mb-5 line-clamp-3">
+                                Built a production-grade Windows desktop video-conferencing application using WPF (.NET 7), WebView2, and Mediasoup.
+                            </p>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="px-2.5 py-1 text-[10px] bg-neutral-900 rounded text-red-400 font-mono border border-neutral-800">WPF .NET 7</span>
+                                <span class="px-2.5 py-1 text-[10px] bg-neutral-900 rounded text-neutral-400 font-mono border border-neutral-800">WebRTC</span>
+                            </div>
+                        </div>
+                    </a>
+
+                    <!-- Project Card 2 -->
+                    <a href="#" class="block w-80 flex-shrink-0 glass-panel p-0 rounded-xl overflow-hidden group hover:border-red-500/50 transition-all duration-500 transform hover:-translate-y-4">
+                        <div class="h-40 bg-gradient-to-br from-neutral-800 via-neutral-900 to-black p-6 relative group-hover:from-red-900/20 group-hover:to-black transition-colors">
+                            <div class="absolute top-4 right-4 w-10 h-10 flex items-center justify-center bg-black/40 rounded-full backdrop-blur border border-white/5">
+                                <i data-lucide="scan-text" class="w-5 h-5 text-white group-hover:text-red-400 transition-colors"></i>
+                            </div>
+                            <div class="mt-auto h-full flex items-end">
+                                <h3 class="text-xl font-bold text-white tracking-tight">OCR Engine</h3>
+                            </div>
+                        </div>
+                        <div class="p-6 border-t border-neutral-800 bg-black/20">
+                            <p class="text-xs text-neutral-400 leading-relaxed mb-5">
+                                Automated invoice extraction pipeline. Python + OpenCV denoising increased Tesseract accuracy by 40%.
+                            </p>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="px-2.5 py-1 text-[10px] bg-neutral-900 rounded text-red-400 font-mono border border-neutral-800">Python</span>
+                                <span class="px-2.5 py-1 text-[10px] bg-neutral-900 rounded text-neutral-400 font-mono border border-neutral-800">OpenCV</span>
+                            </div>
+                        </div>
+                    </a>
+
+                    <!-- Project Card 3 -->
+                    <a href="#" class="block w-80 flex-shrink-0 glass-panel p-0 rounded-xl overflow-hidden group hover:border-red-500/50 transition-all duration-500 transform hover:-translate-y-4">
+                        <div class="h-40 bg-gradient-to-br from-neutral-800 via-neutral-900 to-black p-6 relative group-hover:from-red-900/20 group-hover:to-black transition-colors">
+                            <div class="absolute top-4 right-4 w-10 h-10 flex items-center justify-center bg-black/40 rounded-full backdrop-blur border border-white/5">
+                                <i data-lucide="package" class="w-5 h-5 text-white group-hover:text-red-400 transition-colors"></i>
+                            </div>
+                            <div class="mt-auto h-full flex items-end">
+                                <h3 class="text-xl font-bold text-white tracking-tight">Warehouse Sys</h3>
+                            </div>
+                        </div>
+                        <div class="p-6 border-t border-neutral-800 bg-black/20">
+                            <p class="text-xs text-neutral-400 leading-relaxed mb-5">
+                                Microservices architecture for inventory management. Automated printing APIs reducing manual error by 30%.
+                            </p>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="px-2.5 py-1 text-[10px] bg-neutral-900 rounded text-red-400 font-mono border border-neutral-800">.NET</span>
+                                <span class="px-2.5 py-1 text-[10px] bg-neutral-900 rounded text-neutral-400 font-mono border border-neutral-800">Microservices</span>
+                            </div>
+                        </div>
+                    </a>
+
+                    <!-- Project Card 4 -->
+                    <a href="#" class="block w-80 flex-shrink-0 glass-panel p-0 rounded-xl overflow-hidden group hover:border-red-500/50 transition-all duration-500 transform hover:-translate-y-4">
+                        <div class="h-40 bg-gradient-to-br from-neutral-800 via-neutral-900 to-black p-6 relative group-hover:from-red-900/20 group-hover:to-black transition-colors">
+                            <div class="absolute top-4 right-4 w-10 h-10 flex items-center justify-center bg-black/40 rounded-full backdrop-blur border border-white/5">
+                                <i data-lucide="shopping-bag" class="w-5 h-5 text-white group-hover:text-red-400 transition-colors"></i>
+                            </div>
+                            <div class="mt-auto h-full flex items-end">
+                                <h3 class="text-xl font-bold text-white tracking-tight">Shopify Integration</h3>
+                            </div>
+                        </div>
+                        <div class="p-6 border-t border-neutral-800 bg-black/20">
+                            <p class="text-xs text-neutral-400 leading-relaxed mb-5">
+                                Seamless e-commerce synchronization middleware using GraphQL and Webhooks.
+                            </p>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="px-2.5 py-1 text-[10px] bg-neutral-900 rounded text-red-400 font-mono border border-neutral-800">GraphQL</span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- SECTION 5: CONTACT FORM (Finish Line) -->
+            <div class="w-screen flex-shrink-0 flex items-center justify-center relative px-4 md:px-10">
+                <!-- Finish Line Texture on Floor -->
+                <div class="absolute bottom-0 w-full h-4 bg-[repeating-linear-gradient(90deg,white_0,white_50px,transparent_50px,transparent_100px)] opacity-20"></div>
+
+                <div class="glass-panel p-8 md:p-12 rounded-2xl border border-neutral-800 w-full max-w-2xl relative z-20 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+                    <div class="absolute -top-3 -left-3">
+                         <div class="w-24 h-24 border-t-2 border-l-2 border-red-600 rounded-tl-3xl opacity-50"></div>
+                    </div>
+
+                    <div class="flex items-center gap-5 mb-10">
+                        <div class="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-neutral-800 to-black border border-neutral-700 shadow-inner">
+                            <i data-lucide="flag" class="w-7 h-7 text-white animate-pulse"></i>
+                        </div>
+                        <div>
+                             <h2 class="text-3xl font-bold text-white tracking-tighter">Finish Line</h2>
+                             <p class="text-neutral-500 text-sm mt-1 font-mono">Race Analysis & Next Steps</p>
+                        </div>
+                    </div>
+                    
+                    <form onsubmit="event.preventDefault();" class="space-y-5">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div class="space-y-1.5">
+                                <label class="text-[10px] uppercase font-mono text-neutral-500 font-bold tracking-widest">Driver Name</label>
+                                <input type="text" class="w-full bg-neutral-900/50 border border-neutral-800 rounded-lg p-3.5 text-sm text-white placeholder:text-neutral-700 focus:border-red-500 focus:bg-neutral-900 transition-all duration-300" placeholder="Enter name">
+                            </div>
+                            <div class="space-y-1.5">
+                                <label class="text-[10px] uppercase font-mono text-neutral-500 font-bold tracking-widest">Comms Frequency</label>
+                                <input type="email" class="w-full bg-neutral-900/50 border border-neutral-800 rounded-lg p-3.5 text-sm text-white placeholder:text-neutral-700 focus:border-red-500 focus:bg-neutral-900 transition-all duration-300" placeholder="email@example.com">
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] uppercase font-mono text-neutral-500 font-bold tracking-widest">Mission Brief</label>
+                            <textarea rows="4" class="w-full bg-neutral-900/50 border border-neutral-800 rounded-lg p-3.5 text-sm text-white placeholder:text-neutral-700 focus:border-red-500 focus:bg-neutral-900 transition-all duration-300 resize-none" placeholder="Project details..."></textarea>
+                        </div>
+
+                        <button type="submit" class="group w-full bg-white hover:bg-red-600 text-black hover:text-white font-bold py-4 rounded-lg transition-all duration-300 text-sm tracking-wide uppercase mt-4 flex items-center justify-center gap-2 overflow-hidden relative">
+                            <span class="relative z-10">Initiate Protocol</span>
+                            <i data-lucide="arrow-right" class="w-4 h-4 relative z-10 group-hover:translate-x-1 transition-transform"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Padding to ensure end is reachable -->
+            <div class="w-[20vw] flex-shrink-0"></div>
+
+        </div>
+
+        <!-- THE CAR (Fixed) -->
+        <div class="fixed bottom-12 left-1/2 -translate-x-1/2 md:translate-x-0 md:left-24 z-40 transform scale-75 md:scale-100 pointer-events-none">
+            <div class="car-body relative w-64 h-24">
+                
+                <!-- Headlight Beam (New) -->
+                <div class="absolute right-[-10px] bottom-[5px] w-[50vw] h-20 headlight-beam z-50"></div>
+
+                <div class="absolute bottom-4 left-0 w-full h-12 bg-neutral-900 rounded-lg border border-neutral-700 overflow-hidden skew-x-[-10deg]">
+                    <div class="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/10 to-transparent"></div>
+                </div>
+                <div class="absolute bottom-14 left-10 w-32 h-10 bg-neutral-800 rounded-t-xl skew-x-[-20deg] border-t border-l border-r border-neutral-700">
+                    <div class="absolute top-1 left-2 w-28 h-8 bg-black/80 rounded-t-lg border-t border-white/5"></div>
+                </div>
+                <div class="absolute bottom-14 left-0 w-4 h-6 bg-neutral-800 skew-x-[10deg]"></div>
+                <div class="absolute bottom-20 left-[-5px] w-12 h-1 bg-neutral-700"></div>
+                <div class="absolute bottom-8 left-[-2px] w-2 h-4 bg-red-600 neon-red rounded-sm shadow-[0_0_15px_rgba(239,68,68,0.8)]"></div>
+                <div class="absolute bottom-8 right-[-2px] w-1 h-3 bg-yellow-100 neon-blue rounded-sm opacity-50"></div>
+                
+                <div class="absolute bottom-0 left-8 w-12 h-12 bg-black rounded-full border-2 border-neutral-700 flex items-center justify-center wheel-spin shadow-lg">
+                    <div class="w-8 h-8 border border-neutral-600 rounded-full flex items-center justify-center relative">
+                        <div class="w-6 h-1 bg-neutral-500"></div>
+                        <div class="h-6 w-1 bg-neutral-500 absolute"></div>
+                    </div>
+                </div>
+                <div class="absolute bottom-0 right-8 w-12 h-12 bg-black rounded-full border-2 border-neutral-700 flex items-center justify-center wheel-spin shadow-lg">
+                    <div class="w-8 h-8 border border-neutral-600 rounded-full flex items-center justify-center relative">
+                         <div class="w-6 h-1 bg-neutral-500"></div>
+                         <div class="h-6 w-1 bg-neutral-500 absolute"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- The Road -->
+        <div class="absolute bottom-0 w-[120vw] h-24 bg-[#0a0a0a] border-t border-neutral-800 z-0 transform skew-x-[-20deg] origin-bottom-left -ml-10 pointer-events-none">
+            <div id="road-lines" class="absolute top-1/2 left-0 w-full h-1 bg-transparent road-texture" style="background-size: 80px 100%;"></div>
+        </div>
+
+        <!-- Vignette -->
+        <div class="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,transparent_20%,rgba(0,0,0,0.8)_100%)] z-40"></div>
+
+    </main>
+
+    <script>
+        lucide.createIcons();
+
+        const world = document.getElementById('world-container');
+        const wheels = document.querySelectorAll('.wheel-spin');
+        const roadLines = document.getElementById('road-lines');
+        const speedDisplay = document.getElementById('speed-display');
+        const progressBar = document.getElementById('progress-bar');
+        const skyline = document.getElementById('skyline');
+        const stars = document.getElementById('stars');
+
+        // ============================================
+        // RESUME DOWNLOAD LOGIC
+        // ============================================
+        
+        // 1. Convert your PDF to Base64 (Use a free online tool like 'Convert PDF to Base64')
+        // 2. Paste the long string inside the quotes below.
+        const resumeBase64 = ""; 
+
+        function downloadResume() {
+            if(!resumeBase64 || resumeBase64.length < 100) {
+                alert("Resume Not Loaded: Please add the Base64 string in the code!");
+                return;
+            }
+
+            try {
+                // Remove prefix if present (some tools add it)
+                const base64Data = resumeBase64.replace(/^data:application\/pdf;base64,/, "");
+                
+                // Decode Base64
+                const binaryString = window.atob(base64Data);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+
+                // Create Blob and Link
+                const blob = new Blob([bytes], { type: "application/pdf" });
+                const link = document.createElement("a");
+                link.href = window.URL.createObjectURL(blob);
+                link.download = "Lakshya_Purohit_Resume.pdf";
+                
+                // Trigger Download
+                document.body.appendChild(link);
+                link.click();
+                
+                // Cleanup
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(link.href);
+            } catch (error) {
+                console.error("Download failed:", error);
+                alert("Error downloading resume. Check console.");
+            }
+        }
+
+
+        // ============================================
+        // SCROLL & PHYSICS ENGINE
+        // ============================================
+
+        let lastScrollY = window.scrollY;
+        let speed = 0;
+
+        // Total content width calculation for smooth scroll
+        // Adjusted to -550. This aligns the center of the Contact card (at approx 600vw)
+        // with the center of the viewport (50vw) when scroll is at 100%.
+        const totalTravelDistance = -550; 
+
+        window.addEventListener('scroll', () => {
+            const scrollY = window.scrollY;
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            const scrollPercent = Math.min(scrollY / maxScroll, 1);
+            
+            // Move World Horizontally
+            const moveAmount = scrollPercent * totalTravelDistance; 
+            world.style.transform = `translateX(${moveAmount}vw)`;
+
+            // Parallax Effects
+            if(skyline) skyline.style.transform = `translateX(${scrollPercent * -50}vw)`;
+            if(stars) stars.style.transform = `translateX(${scrollPercent * -15}vw)`;
+            
+            // Speedometer logic
+            const delta = Math.abs(scrollY - lastScrollY);
+            speed = Math.min(Math.floor(delta * 2), 240);
+            
+            if(speedDisplay) speedDisplay.innerText = speed.toString().padStart(3, '0');
+            if(progressBar) progressBar.style.width = `${scrollPercent * 100}%`;
+
+            // Animations
+            if (delta > 0) {
+                wheels.forEach(w => w.style.animationPlayState = 'running');
+                // Road movement simulation
+                const currentPos = parseFloat(getComputedStyle(roadLines).backgroundPositionX) || 0;
+                roadLines.style.backgroundPositionX = `${currentPos - (delta * 2)}px`;
+            } else {
+                wheels.forEach(w => w.style.animationPlayState = 'paused');
+            }
+
+            lastScrollY = scrollY;
+
+            clearTimeout(window.scrollTimeout);
+            window.scrollTimeout = setTimeout(() => {
+                if(speedDisplay) speedDisplay.innerText = "000";
+                wheels.forEach(w => w.style.animationPlayState = 'paused');
+            }, 100);
+        });
+    </script>
+
+</body>
+</html>
